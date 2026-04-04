@@ -5,10 +5,10 @@
 init() ->
     SoName = case code:priv_dir(saga_csv) of
         {error, bad_name} ->
-            case filelib:is_dir(filename:join(["..", priv])) of
-                true -> filename:join(["..", priv, saga_csv_nif]);
-                _    -> filename:join([priv, saga_csv_nif])
-            end;
+            %% Fallback: find priv/ relative to the beam file's directory
+            BeamDir = filename:dirname(code:which(?MODULE)),
+            PrivDir = filename:join(filename:dirname(BeamDir), "priv"),
+            filename:join(PrivDir, saga_csv_nif);
         Dir ->
             filename:join(Dir, saga_csv_nif)
     end,

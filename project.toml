@@ -1,0 +1,9 @@
+[project]
+name = "saga_csv"
+
+[bin]
+main = "src/Main.dy"
+
+[library]
+module = "SagaCsv"
+expose = ["SagaCsv"]

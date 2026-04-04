@@ -1,0 +1,4 @@
+module SagaCsv
+
+@external("erlang", "saga_csv_bridge", "parse_all")
+pub fun parse : Int -> String -> List (List String)

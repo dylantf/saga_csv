@@ -1,0 +1,11 @@
+module Main
+
+import SagaCsv (parse)
+
+pub fun main : Unit -> Unit
+main () = {
+  let csv = "name,age,city\nAlice,30,Portland\nBob,25,Seattle\n"
+  let comma = 44  # ASCII code for ','
+  let rows = parse comma csv
+  dbg rows
+}

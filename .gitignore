@@ -1,0 +1,5 @@
+_build/
+ebin/
+priv/
+deps/
+native/target/

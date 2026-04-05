@@ -1,4 +1,89 @@
 module SagaCsv
 
+pub record Config {
+  separator: String,
+  skip_header: Bool,
+  headers: List String,
+}
+
+pub fun reader : Unit -> Config
+reader () = Config { separator: ",", skip_header: False, headers: [] }
+
+pub fun writer : Unit -> Config
+writer () = Config { separator: ",", skip_header: False, headers: [] }
+
+pub fun with_separator : String -> Config -> Config
+with_separator sep config = { config | separator: sep }
+
+pub fun skip_header : Config -> Config
+skip_header config = { config | skip_header: True }
+
+pub fun with_headers : List String -> Config -> Config
+with_headers headers config = { config | headers: headers }
+
 @external("erlang", "saga_csv_bridge", "parse_all")
-pub fun parse : Int -> String -> List (List String)
+fun parse_raw : String -> String -> List (List String)
+
+#@ Parse CSV data into a list of rows, where each row is a list of strings.
+pub fun parse : String -> Config -> List (List String)
+parse data config = {
+  let rows = parse_raw config.separator data
+  if config.skip_header then case rows {
+    [] -> []
+    _ :: rest -> rest
+  }
+  else rows
+}
+
+#@ Parse CSV data into a list of dicts, using the first row as header keys.
+#@ Panics if the input has no rows.
+pub fun parse_keyed : String -> Config -> List (Dict String String)
+parse_keyed data config = {
+  let rows = parse_raw config.separator data
+  case rows {
+    [] -> panic "parse_keyed: no header row"
+    headers :: rest -> {
+      let data_rows = if config.skip_header then case rest {
+        [] -> []
+        _ :: r -> r
+      }
+      else rest
+      List.map (zip_to_dict headers) data_rows
+    }
+  }
+}
+
+fun zip_to_dict : List String -> List String -> Dict String String
+zip_to_dict keys values = zip_acc keys values (Dict.new ())
+
+fun zip_acc : List String -> List String -> Dict String String -> Dict String String
+zip_acc keys values acc = case (keys, values) {
+  (k :: ks, v :: vs) -> zip_acc ks vs (Dict.put k v acc)
+  _ -> acc
+}
+
+@external("erlang", "saga_csv_bridge", "write_all")
+fun write_raw : String -> List (List String) -> String
+
+#@ Write rows to CSV string.
+pub fun write : List (List String) -> Config -> String
+write rows config = {
+  let all_rows = case config.headers {
+    [] -> rows
+    h -> h :: rows
+  }
+  write_raw config.separator all_rows
+}
+
+#@ Write a list of dicts to CSV string. Requires headers to determine column order.
+#@ Panics if no headers are set.
+pub fun write_keyed : List (Dict String String) -> Config -> String
+write_keyed rows config = case config.headers {
+  [] -> panic "write_keyed: headers must be set with with_headers"
+  headers -> {
+    let list_rows = List.map (fun row ->
+      List.map (fun h -> Dict.get h row |> Maybe.unwrap_or "") headers
+    ) rows
+    write list_rows config
+  }
+}

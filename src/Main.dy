@@ -1,11 +1,36 @@
 module Main
 
-import SagaCsv (parse)
+import Std.File (File, fs)
+import SagaCsv (
+  reader,
+  skip_header,
+  parse,
+  parse_keyed,
+  writer,
+  with_headers,
+  write,
+  write_keyed
+)
 
 pub fun main : Unit -> Unit
 main () = {
-  let csv = "name,age,city\nAlice,30,Portland\nBob,25,Seattle\n"
-  let comma = 44  # ASCII code for ','
-  let rows = parse comma csv
+  # Write with data that needs escaping
+  let csv =
+    writer ()
+    |> with_headers ["name", "age", "bio"]
+    |> write [
+      ["Alice", "30", "likes cats, dogs"],
+      ["Bob", "25", "said \"hello\""],
+      ["Charlie", "35", "line1\nline2"],
+    ]
+  println csv
+
+  let _ = File.write! "testcsv.csv" csv
+
+  # Round-trip: write then read back
+  let rows =
+    reader ()
+    |> skip_header
+    |> parse csv
   dbg rows
-}
+} with {console, fs}

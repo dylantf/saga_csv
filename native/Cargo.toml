@@ -8,4 +8,5 @@ name = "saga_csv_nif"
 crate-type = ["cdylib"]
 
 [dependencies]
+csv-core = "0.1"
 rustler = "0.36"

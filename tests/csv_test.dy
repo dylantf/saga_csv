@@ -1,0 +1,212 @@
+import Std.Test (describe, test, assert_eq)
+import SagaCsv (
+  reader,
+  writer,
+  with_separator,
+  with_headers,
+  skip_header,
+  parse,
+  parse_keyed,
+  write,
+  write_keyed
+)
+
+describe "SagaCsv" {
+  describe "basic parsing" {
+    test "parses comma-separated row" {
+      let rows = reader () |> parse "a,b,c\n"
+      assert_eq rows [["a", "b", "c"]]
+    }
+
+    test "parses multiple rows" {
+      let rows = reader () |> parse "a,b\nc,d\n"
+      assert_eq rows [["a", "b"], ["c", "d"]]
+    }
+
+    test "parses row without trailing newline" {
+      let rows = reader () |> parse "a,b,c"
+      assert_eq rows [["a", "b", "c"]]
+    }
+
+    test "parses empty input" {
+      let rows = reader () |> parse ""
+      assert_eq rows []
+    }
+  }
+
+  describe "custom delimiter" {
+    test "parses tab-separated" {
+      let rows =
+        reader ()
+        |> with_separator "\t"
+        |> parse "a\tb\tc\n"
+      assert_eq rows [["a", "b", "c"]]
+    }
+
+    test "parses pipe-separated" {
+      let rows =
+        reader ()
+        |> with_separator "|"
+        |> parse "x|y|z\n"
+      assert_eq rows [["x", "y", "z"]]
+    }
+  }
+
+  describe "skip_header" {
+    test "removes first row" {
+      let rows =
+        reader ()
+        |> skip_header
+        |> parse "name,age\nAlice,30\nBob,25\n"
+      assert_eq rows [["Alice", "30"], ["Bob", "25"]]
+    }
+
+    test "skip_header on single row gives empty" {
+      let rows =
+        reader ()
+        |> skip_header
+        |> parse "header1,header2\n"
+      assert_eq rows []
+    }
+  }
+
+  describe "quoting" {
+    test "strips surrounding quotes" {
+      let rows = reader () |> parse "\"hello\",world\n"
+      assert_eq rows [["hello", "world"]]
+    }
+
+    test "handles comma inside quotes" {
+      let rows = reader () |> parse "\"a,b\",c\n"
+      assert_eq rows [["a,b", "c"]]
+    }
+
+    test "unescapes doubled quotes" {
+      let rows = reader () |> parse "\"say \"\"hi\"\"\",ok\n"
+      assert_eq rows [["say \"hi\"", "ok"]]
+    }
+  }
+
+  describe "CRLF" {
+    test "handles CRLF line endings" {
+      let rows = reader () |> parse "a,b\r\nc,d\r\n"
+      assert_eq rows [["a", "b"], ["c", "d"]]
+    }
+  }
+
+  describe "parse_keyed" {
+    test "parses rows into dicts keyed by headers" {
+      let rows = reader () |> parse_keyed "name,age\nAlice,30\nBob,25\n"
+      let alice = Dict.new () |> Dict.put "name" "Alice" |> Dict.put "age" "30"
+      let bob = Dict.new () |> Dict.put "name" "Bob" |> Dict.put "age" "25"
+      assert_eq rows [alice, bob]
+    }
+
+    test "handles skip_header as extra row skip" {
+      let rows =
+        reader ()
+        |> skip_header
+        |> parse_keyed "name,age\nheader_row\nAlice,30\n"
+      let alice = Dict.new () |> Dict.put "name" "Alice" |> Dict.put "age" "30"
+      assert_eq rows [alice]
+    }
+
+    test "extra columns are ignored" {
+      let rows = reader () |> parse_keyed "a,b\n1,2,3\n"
+      let expected = Dict.new () |> Dict.put "a" "1" |> Dict.put "b" "2"
+      assert_eq rows [expected]
+    }
+  }
+
+  describe "write" {
+    test "writes simple rows" {
+      let csv =
+        writer ()
+        |> write [["a", "b"], ["c", "d"]]
+      assert_eq csv "a,b\nc,d\n"
+    }
+
+    test "writes with headers" {
+      let csv =
+        writer ()
+        |> with_headers ["name", "age"]
+        |> write [["Alice", "30"]]
+      assert_eq csv "name,age\nAlice,30\n"
+    }
+
+    test "quotes fields containing delimiter" {
+      let csv =
+        writer ()
+        |> write [["hello, world", "ok"]]
+      assert_eq csv "\"hello, world\",ok\n"
+    }
+
+    test "escapes quotes with doubling" {
+      let csv =
+        writer ()
+        |> write [["say \"hi\"", "ok"]]
+      assert_eq csv "\"say \"\"hi\"\"\",ok\n"
+    }
+
+    test "quotes fields containing newlines" {
+      let csv =
+        writer ()
+        |> write [["line1\nline2", "ok"]]
+      assert_eq csv "\"line1\nline2\",ok\n"
+    }
+
+    test "writes with custom separator" {
+      let csv =
+        writer ()
+        |> with_separator "\t"
+        |> write [["a", "b"], ["c", "d"]]
+      assert_eq csv "a\tb\nc\td\n"
+    }
+  }
+
+  describe "write_keyed" {
+    test "writes dicts in header order" {
+      let row = Dict.new () |> Dict.put "name" "Alice" |> Dict.put "age" "30"
+      let csv =
+        writer ()
+        |> with_headers ["name", "age"]
+        |> write_keyed [row]
+      assert_eq csv "name,age\nAlice,30\n"
+    }
+
+    test "missing keys become empty strings" {
+      let row = Dict.new () |> Dict.put "name" "Alice"
+      let csv =
+        writer ()
+        |> with_headers ["name", "age"]
+        |> write_keyed [row]
+      assert_eq csv "name,age\nAlice,\n"
+    }
+  }
+
+  describe "round-trip" {
+    test "write then parse returns original data" {
+      let data = [["Alice", "30"], ["Bob", "25"]]
+      let csv =
+        writer ()
+        |> with_headers ["name", "age"]
+        |> write data
+      let rows =
+        reader ()
+        |> skip_header
+        |> parse csv
+      assert_eq rows data
+    }
+
+    test "write then parse_keyed returns original dicts" {
+      let alice = Dict.new () |> Dict.put "name" "Alice" |> Dict.put "age" "30"
+      let bob = Dict.new () |> Dict.put "name" "Bob" |> Dict.put "age" "25"
+      let csv =
+        writer ()
+        |> with_headers ["name", "age"]
+        |> write_keyed [alice, bob]
+      let rows = reader () |> parse_keyed csv
+      assert_eq rows [alice, bob]
+    }
+  }
+}

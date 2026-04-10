@@ -2,7 +2,7 @@
 name = "saga_csv"
 
 [bin]
-main = "src/Main.dy"
+main = "src/Main.saga"
 
 [library]
 module = "SagaCsv"

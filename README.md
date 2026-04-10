@@ -1,6 +1,6 @@
 # saga_csv
 
-A fast CSV parser for [dylang](https://github.com/dylantf/dylang), powered by a Rust NIF.
+A fast CSV parser for [saga](https://github.com/dylantf/saga), powered by a Rust NIF.
 
 The parser operates on raw binaries using zero-copy sub-binaries — parsed fields are views into the original input, not copies. This makes it fast enough for bulk data loading.
 
@@ -22,8 +22,8 @@ Requires Rust (cargo) and Erlang (erlc, rebar3) on PATH.
 
 ```bash
 rebar3 compile    # builds the Rust NIF and Erlang bridge
-dylang build      # builds the dylang library
-dylang run        # runs src/Main.dy
+saga build      # builds the saga library
+saga run        # runs src/Main.dy
 ```
 
 ## Project structure
@@ -35,7 +35,7 @@ src/
   saga_csv_bridge.erl   # Erlang bridge (type marshalling)
   saga_csv.app.src      # OTP application metadata
 lib/
-  SagaCsv.dy            # dylang library module
+  SagaCsv.dy            # saga library module
 native/
   Cargo.toml            # Rust NIF crate
   Makefile              # invoked by rebar3 pre_hooks

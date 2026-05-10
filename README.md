@@ -23,19 +23,19 @@ Requires Rust (cargo) and Erlang (erlc, rebar3) on PATH.
 ```bash
 rebar3 compile    # builds the Rust NIF and Erlang bridge
 saga build      # builds the saga library
-saga run        # runs src/Main.dy
+saga run        # runs src/Main.saga for testing
 ```
 
 ## Project structure
 
 ```
 src/
-  Main.dy               # example binary entry point
+  Main.saga               # example binary entry point
   saga_csv_nif.erl      # Erlang NIF loader
   saga_csv_bridge.erl   # Erlang bridge (type marshalling)
   saga_csv.app.src      # OTP application metadata
 lib/
-  SagaCsv.dy            # saga library module
+  SagaCsv.saga            # saga library module
 native/
   Cargo.toml            # Rust NIF crate
   Makefile              # invoked by rebar3 pre_hooks

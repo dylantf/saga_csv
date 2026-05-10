@@ -3,3 +3,5 @@ ebin/
 priv/
 deps/
 native/target/
+
+.direnv/
